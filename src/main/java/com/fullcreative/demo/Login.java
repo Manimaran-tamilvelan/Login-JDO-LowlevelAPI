@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -25,12 +26,15 @@ import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.datastore.KeyFactory;
 import com.google.appengine.api.datastore.PreparedQuery;
 import com.google.appengine.api.datastore.Query;
+import com.google.appengine.api.memcache.MemcacheService;
+import com.google.appengine.api.memcache.MemcacheServiceFactory;
 
 /**
  * Servlet implementation class Login
  */
 @Controller
 public class Login extends HttpServlet {
+
 	private static final long serialVersionUID = 1L;
 
 	@RequestMapping("/login")
@@ -62,9 +66,9 @@ public class Login extends HttpServlet {
 					List<String> temp = new ArrayList();
 					String userNamePassword = user.getKey().getName();
 					String[] userSplit = userNamePassword.split(" ");
-					System.out.println(userSplit[0]);
+					// System.out.println(userSplit[0]);
 					String name = (String) user.getProperty("mailID");
-					System.out.println(name);
+					// System.out.println(name);
 
 					temp.add((String) user.getProperty("password"));
 					temp.add((String) user.getProperty("mailID"));
@@ -81,6 +85,31 @@ public class Login extends HttpServlet {
 
 			}
 
+			MemcacheService mcs = MemcacheServiceFactory.getMemcacheService();
+			Object expected = mcs.get(userName);
+			// Object s = (Object) "null";
+			// String s = "null";
+
+			if (expected != null) {
+				// mcs.get(userName);
+
+				List<String> finalUsersCache = new ArrayList<String>();
+				finalUsersCache.add(userName);
+				finalUsersCache.addAll((List<String>) mcs.get(userName));
+				// System.out.println(finalUsers);
+				System.out.println("memcache");
+
+				HttpSession sess = req.getSession();
+				sess.setAttribute("userName", userName);
+				
+				modelView.setViewName("welcome.jsp");
+				
+				modelView.addObject("showUserDetail", finalUsersCache);
+				return modelView;
+
+			}
+
+			System.out.println("not from memcache");
 			authUser = datastore.get(key);
 			// System.out.println();
 			String userNameAndPassword = authUser.getKey().getName();
@@ -114,41 +143,6 @@ public class Login extends HttpServlet {
 		}
 		return modelView;
 
-		/**
-		 * 
-		 * 
-		 * // To send data & to set view page ModelAndView modelView = new
-		 * ModelAndView();
-		 * 
-		 * List<String> finalAuthUser = new ArrayList();
-		 * 
-		 * for (Map.Entry<Integer, List<String>> entry : finalUsers.entrySet()) {
-		 * 
-		 * if (entry.getValue().get(0).equals(userName) &&
-		 * entry.getValue().get(1).equals(password)) {
-		 * finalAuthUser.addAll(entry.getValue());
-		 * 
-		 * HttpSession sess = req.getSession(); sess.setAttribute("userName", userName);
-		 * 
-		 * modelView.setViewName("welcome.jsp"); modelView.addObject("showUserDetail",
-		 * finalAuthUser); return modelView;
-		 * 
-		 * } }
-		 * 
-		 * 
-		 * if (userName.equals("admin") && password.equals("admin")) {
-		 * 
-		 * HttpSession sess = req.getSession(); sess.setAttribute("userName", userName);
-		 * 
-		 * modelView.setViewName("adminResult.jsp"); modelView.addObject("allUsers",
-		 * finalUsers); return modelView;
-		 * 
-		 * 
-		 * }
-		 * 
-		 * else { modelView.setViewName("login.jsp"); String errorMessage = "Incorrect
-		 * Details"; modelView.addObject("message", errorMessage); } return modelView;
-		 */
 	}
 
 }

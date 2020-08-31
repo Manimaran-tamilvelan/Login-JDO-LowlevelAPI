@@ -53,9 +53,9 @@ public class delete extends HttpServlet {
 			List<String> temp = new ArrayList();
 			String userNamePassword = user.getKey().getName();
 			String[] userSplit = userNamePassword.split(" ");
-			System.out.println(userSplit[0]);
+			//System.out.println(userSplit[0]);
 			String name = (String) user.getProperty("mailID");
-			System.out.println(name);
+			//System.out.println(name);
 
 			temp.add((String) user.getProperty("password"));
 			temp.add((String) user.getProperty("mailID"));

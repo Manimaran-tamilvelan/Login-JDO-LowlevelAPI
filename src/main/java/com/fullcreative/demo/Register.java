@@ -1,6 +1,8 @@
 package com.fullcreative.demo;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.jdo.JDOHelper;
 import javax.jdo.PersistenceManager;
@@ -11,15 +13,18 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.servlet.ModelAndView;
 
-import com.fullcreative.jdo.User;
 import com.google.appengine.api.datastore.DatastoreService;
 import com.google.appengine.api.datastore.DatastoreServiceFactory;
 import com.google.appengine.api.datastore.Entity;
 import com.google.appengine.api.datastore.Key;
+import com.google.appengine.api.memcache.MemcacheService;
+import com.google.appengine.api.memcache.MemcacheServiceFactory;
 import com.google.cloud.datastore.Transaction;
 
 /**
@@ -29,7 +34,7 @@ import com.google.cloud.datastore.Transaction;
 public class Register extends HttpServlet {
 
 	@RequestMapping("/register")
-	public void service(HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException {
+	public ModelAndView register(HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException {
 
 		String userName = req.getParameter("userName");
 		String password = req.getParameter("password");
@@ -39,10 +44,42 @@ public class Register extends HttpServlet {
 
 		DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
 
-		Entity e = new Entity("Users", userName+" "+password);
-		
+		ModelAndView modelView = new ModelAndView();
 
-		//e.setProperty("userName", userName);
+		HttpSession session = req.getSession();
+
+		MemcacheService mcs = MemcacheServiceFactory.getMemcacheService();
+		Object check = mcs.get(userName);
+
+		if (check != null) {
+
+			modelView.setViewName("register.jsp");
+			String errorMessage = "Username already Details";
+			modelView.addObject("message", errorMessage);
+
+			return modelView;
+
+		}
+
+		Entity e = new Entity("Users", userName + " " + password);
+
+		try {
+
+			if (session.getAttribute("userNameModify") != null) {
+				String userNameCheck = (String) session.getAttribute("userNameModify");
+				String passwordCheck = (String) session.getAttribute("userPwdConfirm");
+
+				e = new Entity("Users", userNameCheck + " " + passwordCheck);
+				session.removeAttribute("userNameModify");
+
+				session.invalidate();
+
+			}
+		} finally {
+
+		}
+
+		// e.setProperty("userName", userName);
 		e.setProperty("password", password);
 		e.setProperty("mailID", mailID);
 		e.setProperty("dOB", dOB);
@@ -50,12 +87,24 @@ public class Register extends HttpServlet {
 
 		datastore.put(e);
 
-		RequestDispatcher rd = req.getRequestDispatcher("/login.jsp");
+		List<String> userDetails = new ArrayList();
+		userDetails.add(password);
+		userDetails.add(mailID);
+		userDetails.add(dOB);
+		userDetails.add(mobileNo);
+
+		mcs.put(userName, userDetails);
+		// System.out.println(mcs.get(userName));
+
 		String display = "Registered Successfully! You can Login now";
 
 		req.setAttribute("message", display);
 
-		rd.include(req, res);
+		modelView.setViewName("login.jsp");
+
+		modelView.addObject("message", display);
+
+		return modelView;
 
 	}
 
