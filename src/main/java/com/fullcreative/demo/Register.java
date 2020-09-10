@@ -25,6 +25,9 @@ import com.google.appengine.api.datastore.Entity;
 import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.memcache.MemcacheService;
 import com.google.appengine.api.memcache.MemcacheServiceFactory;
+import com.google.appengine.api.taskqueue.Queue;
+import com.google.appengine.api.taskqueue.QueueFactory;
+import com.google.appengine.api.taskqueue.TaskOptions;
 import com.google.cloud.datastore.Transaction;
 
 /**
@@ -51,6 +54,7 @@ public class Register extends HttpServlet {
 		MemcacheService mcs = MemcacheServiceFactory.getMemcacheService();
 		Object check = mcs.get(userName);
 
+		//checking memcache
 		if (check != null) {
 
 			modelView.setViewName("register.jsp");
@@ -95,7 +99,17 @@ public class Register extends HttpServlet {
 
 		mcs.put(userName, userDetails);
 		// System.out.println(mcs.get(userName));
+		
+		
+		
+		Queue queue = QueueFactory.getDefaultQueue();
 
+		queue.add(TaskOptions.Builder.withUrl("/worker").param("key", userName));
+		
+		//res.sendRedirect("/");
+		
+		
+		
 		String display = "Registered Successfully! You can Login now";
 
 		req.setAttribute("message", display);
